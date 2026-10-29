@@ -10,9 +10,11 @@ const RoomManagement = require("./services/RoomManagement");
 const registerRoomHandlers = require("./handlers/roomHandler");
 const registerGameHandlers = require("./handlers/gameHandler");
 const GameManagement = require("./services/GameManagement");
+const MatchCoordinator = require("./application/MatchCoordinator");
 
 const roomService = new RoomManagement();
 const gameService = new GameManagement(roomService);
+const matchCoordinator = new MatchCoordinator(roomService, gameService);
 
 const io = new Server(server, {
     cors: {
@@ -27,8 +29,8 @@ gameService.on("roundFinished", (data) => {
 io.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
-    registerRoomHandlers(io, socket,roomService, gameService);
-    registerGameHandlers(io, socket, gameService);
+    registerRoomHandlers(io, socket,roomService, gameService, matchCoordinator);
+    registerGameHandlers(io, socket, gameService,matchCoordinator);
 
     socket.on("disconnect", () => {
         console.log("Player disconnected:", socket.id);

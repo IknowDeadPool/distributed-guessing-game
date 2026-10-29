@@ -70,61 +70,63 @@ class GameManagement extends EventEmitter {
 
     submitGuess(roomCode, playerId, number) {
         if (!this.validateCode(roomCode) || !this.Games.has(roomCode)) {
-            throw new Error("Room Code should be valid");
+            throw new Error("Room code should be valid");
         }
+
         if (!this.validateCode(playerId)) {
-            throw new Error("Player Id  should be valid");
+            throw new Error("Player ID should be valid");
         }
 
-        const isPlayerInRoom = this.roomManagement.isPlayerInRoom(roomCode, playerId);
-
-        if (!isPlayerInRoom) throw new Error("Player is not in room");
+        if (!this.roomManagement.isPlayerInRoom(roomCode, playerId)) {
+            throw new Error("Player is not in room");
+        }
 
         const game = this.Games.get(roomCode);
 
         const result = game.submitGuess(playerId, number);
 
         if (result.result === "CORRECT") {
-            const room = this.roomManagement.getRoom(roomCode);
-            const player = room.players.get(playerId);
-
-            player.addScore(10);
-            this.emit("roundFinished", {
+            const roundSummary = this.finishRound(
                 roomCode,
+                playerId,
+                "CORRECT"
+            );
+
+            return {
                 ...result,
-            });
+                roundSummary
+            };
         }
 
-        if (game.getState() === "FINISHED") {
-            const timer = this.roundTimers.get(roomCode);
-
-            if (timer) {
-                clearTimeout(timer);
-                this.roundTimers.delete(roomCode);
-            }
-        }
         return result;
     }
-
     finishRound(roomCode, winnerId = null, reason = "TIMEOUT") {
-    const game = this.getGame(roomCode);
+        const game = this.Games.get(roomCode);
 
-    const result = game.finishRound(winnerId, reason);
+        if (!game) {
+            throw new Error("Game not found");
+        }
 
-    const timer = this.roundTimers.get(roomCode);
+        if (game.getState() !== "IN_PROGRESS") {
+            return null;
+        }
 
-    if (timer) {
-        clearTimeout(timer);
-        this.roundTimers.delete(roomCode);
-    }
+        const summary = game.finishRound(winnerId, reason);
 
-    this.emit("roundFinished", {
-        roomCode,
-        ...result
-    });
+        const timer = this.roundTimers.get(roomCode);
 
-    return result;
-}
+        if (timer) {
+            clearTimeout(timer);
+            this.roundTimers.delete(roomCode);
+        }
+
+        this.emit("roundFinished", {
+            roomCode,
+            ...summary
+        });
+
+        return summary;
+    } X
 
     getGame(roomCode) {
         if (!this.validateCode(roomCode) || !this.Games.has(roomCode)) {
@@ -146,6 +148,7 @@ class GameManagement extends EventEmitter {
 
         return this.Games.delete(roomCode);
     }
+
     getPlayerScores(roomCode) {
         if (!this.validateCode(roomCode) || !this.Games.has(roomCode)) {
             throw new Error("Room Code should be valid");
@@ -156,20 +159,26 @@ class GameManagement extends EventEmitter {
         return typeof code === "string" && code.trim().length > 0;
     }
 
+    handlePlayerLeft(roomCode, playerId) {
+        const room = this.roomManagement.getRoom(roomCode);
+        const game = this.Games.get(roomCode);
 
-    // handlePlayerLeft(roomCode) {
-    //     const room = this.roomManagement.getRoom(roomCode);
-    //     const game = this.Games.get(roomCode);
+        if (!game) return;
 
-    //     if (!game || game.getState() !== "IN_PROGRESS") {
-    //         return;
-    //     }
+        //game.playerScores.delete(playerId);
 
-    //     if (room.players.size === 1) {
-    //         const remainingPlayerId = room.players.keys().next().value;
-    //         this.finishRound(roomCode);
-    //     }
-    // }
+        if (game.getState() !== "IN_PROGRESS") {
+            return;
+        }
+
+        if (room.players.size === 1) {
+            const remainingPlayerId = room.players.keys().next().value;
+            this.finishRound(roomCode, remainingPlayerId,
+                "FORFEIT"
+            );
+        }
+
+    }
 }
 
 module.exports = GameManagement;

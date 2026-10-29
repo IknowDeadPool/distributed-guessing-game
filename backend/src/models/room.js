@@ -20,6 +20,10 @@ class Room {
         if (this.players.has(player.getId())) throw new Error("Player already in Room");
 
         this.players.set(player.getId(), player);
+
+        if(this.players.size === this.roomSize){
+            this.setStatus("CLOSED");
+        }
     }
 
     isRoomFull() {

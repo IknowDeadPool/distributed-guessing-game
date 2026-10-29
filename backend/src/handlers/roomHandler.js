@@ -3,7 +3,7 @@ const generateServerRandomName = require("../utils/nameGenerator")
 
 const crypto = require("crypto");
 
-function registerRoomHandlers(io, socket, roomService, gameService) {
+function registerRoomHandlers(io, socket, roomService, gameService, matchCoordinator) {
 
     // Create Room
     socket.on("room:create", (data, callback) => {
@@ -86,7 +86,9 @@ function registerRoomHandlers(io, socket, roomService, gameService) {
 
             io.to(normalizedCode).emit(
                 "room:playersUpdated",
-                updatedRoom.getRoomInfo()
+                //updatedRoom.getRoomInfo()
+                matchCoordinator.getPublicMatchState(normalizedCode),
+                //updatedRoom
             );
 
             callback?.({
@@ -102,7 +104,7 @@ function registerRoomHandlers(io, socket, roomService, gameService) {
             })
         }
     })
-    // LEave Room
+    // Leave Room
     socket.on("room:leave", (callback) => {
         try {
 
@@ -120,7 +122,8 @@ function registerRoomHandlers(io, socket, roomService, gameService) {
                 .trim()
                 .toUpperCase();
 
-            const updatedRoom = roomService.leaveRoom(normalizedCode, playerId);
+
+            matchCoordinator.leaveRoom(normalizedCode, playerId);
 
             socket.leave(normalizedCode);
 
@@ -129,7 +132,8 @@ function registerRoomHandlers(io, socket, roomService, gameService) {
 
             io.to(normalizedCode).emit(
                 "room:playersUpdated",
-                updatedRoom.getRoomInfo()
+                //updatedRoom.getRoomInfo()
+                matchCoordinator.getPublicMatchState(normalizedCode)
             );
 
             if (typeof callback === "function") {

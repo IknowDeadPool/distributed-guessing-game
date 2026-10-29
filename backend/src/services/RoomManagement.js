@@ -63,7 +63,7 @@ class RoomManagement {
 
     leaveRoom(roomCode, playerId) {
         if (roomCode === null || !this.Rooms.has(roomCode)) throw new Error("Room code should be valid");
-
+        
         const room = this.Rooms.get(roomCode);
 
         room.removePlayer(playerId);
@@ -72,6 +72,7 @@ class RoomManagement {
 
         if(room.players.size === 0){
             this.Rooms.delete(roomCode);
+            return null;
         }
 
         return room;

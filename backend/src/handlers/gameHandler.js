@@ -1,6 +1,6 @@
 
 
-function registerGameHandlers(io, socket, gameService) {
+function registerGameHandlers(io, socket, gameService, matchCoordinator) {
 
     // Create Game
     socket.on("game:start", (data,callback) => {
@@ -24,7 +24,8 @@ function registerGameHandlers(io, socket, gameService) {
 
             io.to(normalizedCode).emit(
                 "game:started",
-                gameStart
+                // gameStart
+                matchCoordinator.getPublicMatchState(normalizedCode)
             );
 
             if (typeof callback === "function") {
