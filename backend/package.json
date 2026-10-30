@@ -4,6 +4,7 @@
     "crypto": "^1.0.1",
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
+    "pino": "^10.4.0",
     "socket.io": "^4.8.4"
   },
   "name": "learn",
@@ -15,7 +16,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test:game": "node tests/gameFlow.test.js",
-    "test:room" : "node tests/roomFlow.test.js"
+    "test:room": "node tests/roomFlow.test.js"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +24,7 @@
   "type": "commonjs",
   "devDependencies": {
     "nodemon": "^3.1.14",
+    "pino-pretty": "^13.2.0",
     "socket.io-client": "^4.8.4"
   }
 }

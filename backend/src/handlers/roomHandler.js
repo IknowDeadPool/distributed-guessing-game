@@ -1,15 +1,16 @@
 const Player = require("../models/player");
+const logger = require("../logging/logger");
+const EVENTS = require("../logging/events");
+
 const generateServerRandomName = require("../utils/nameGenerator")
 
 const crypto = require("crypto");
 
 function registerRoomHandlers(io, socket, matchCoordinator) {
-    console.log("player", socket.id);
-    
+
+
     // Create Room  
     socket.on("room:create", (data, callback) => {
-
-        console.log("player", socket.id);
 
         try {
             if (socket.data.roomCode) {
@@ -33,6 +34,12 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
             socket.data.roomCode = room.getCode();
             socket.data.playerId = player.getId();
 
+            logger.info({
+                event: "room.created",
+                roomCode: room.getCode(),
+                playerId: player.getId()
+            }, "Room created successfully");
+
             console.log(player.name);
             callback?.({
                 success: true,
@@ -43,6 +50,12 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
             });
         }
         catch (error) {
+            logger.warn({
+                event: "room.create.failed",
+                socketId: socket.id,
+                err: error
+            }, "Room creation failed");
+
             callback?.({
                 success: false,
                 error: error.message
@@ -120,9 +133,9 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
                 .trim()
                 .toUpperCase();
 
-            console.log("leaving room - roomHandler :", playerId);
+
             matchCoordinator.leaveRoom(normalizedCode, playerId);
-            console.log("left room - roomHandler :", playerId);
+
 
             socket.leave(normalizedCode);
 
