@@ -3,31 +3,30 @@ const generateServerRandomName = require("../utils/nameGenerator")
 
 const crypto = require("crypto");
 
-function registerRoomHandlers(io, socket, roomService, gameService, matchCoordinator) {
-
-    // Create Room
+function registerRoomHandlers(io, socket, matchCoordinator) {
+    console.log("player", socket.id);
+    
+    // Create Room  
     socket.on("room:create", (data, callback) => {
+
+        console.log("player", socket.id);
+
         try {
             if (socket.data.roomCode) {
                 throw new Error("Player is already in the room");
             }
 
+
             const name = data.playerName.trim();
+
+            console.log("PlayerName : ", name);
 
             const playerName = !name ? generateServerRandomName() : name;
             const roomSize = (data.roomSize < 2 || data.roomSize > 10) ? 10 : data.roomSize;
 
             const player = new Player(crypto.randomUUID(), playerName);
-            const room = roomService.createRoom(roomSize);
-            const game = gameService.createGame(room.getCode());
 
-
-            console.log("Player ID :", player.getId());
-            console.log("Room ID :", room.getCode());
-            console.log("game Created for - ", room.getCode());
-
-            roomService.joinRoom(room.getCode(), player);
-            room.setHost(player.getId());
+            const { room, game } = matchCoordinator.createRoom(roomSize, player)
 
             socket.join(room.getCode());
 
@@ -72,12 +71,11 @@ function registerRoomHandlers(io, socket, roomService, gameService, matchCoordin
                 .trim()
                 .toUpperCase();
 
-            //const room = roomService.getRoom(normalizedCode);
 
             const player = new Player(crypto.randomUUID(), playerName);
 
 
-            const updatedRoom = roomService.joinRoom(normalizedCode, player);
+            const updatedRoom = matchCoordinator.joinRoom(normalizedCode, player);
 
             socket.join(normalizedCode);
 
@@ -85,7 +83,7 @@ function registerRoomHandlers(io, socket, roomService, gameService, matchCoordin
             socket.data.playerId = player.getId();
 
             io.to(normalizedCode).emit(
-                "room:playersUpdated",
+                "match:stateUpdated",
                 //updatedRoom.getRoomInfo()
                 matchCoordinator.getPublicMatchState(normalizedCode),
                 //updatedRoom
@@ -122,8 +120,9 @@ function registerRoomHandlers(io, socket, roomService, gameService, matchCoordin
                 .trim()
                 .toUpperCase();
 
-
+            console.log("leaving room - roomHandler :", playerId);
             matchCoordinator.leaveRoom(normalizedCode, playerId);
+            console.log("left room - roomHandler :", playerId);
 
             socket.leave(normalizedCode);
 
@@ -131,13 +130,12 @@ function registerRoomHandlers(io, socket, roomService, gameService, matchCoordin
             socket.data.playerId = null;
 
             io.to(normalizedCode).emit(
-                "room:playersUpdated",
+                "match:stateUpdated",
                 //updatedRoom.getRoomInfo()
                 matchCoordinator.getPublicMatchState(normalizedCode)
             );
 
             if (typeof callback === "function") {
-
 
                 callback?.({
                     success: true,

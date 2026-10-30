@@ -21,8 +21,15 @@ class Room {
 
         this.players.set(player.getId(), player);
 
+        this.updateRoomStatus();
+    }
+
+    updateRoomStatus(){
         if(this.players.size === this.roomSize){
             this.setStatus("CLOSED");
+        }
+        else if(this.players.size < this.roomSize){
+            this.setStatus("OPEN")
         }
     }
 
@@ -50,6 +57,7 @@ class Room {
                 this.setHost(nextPlayer.getId());
             }
         }
+        this.updateRoomStatus();
     }
 
     setHost(playerId) {

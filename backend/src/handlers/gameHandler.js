@@ -1,6 +1,6 @@
 
 
-function registerGameHandlers(io, socket, gameService, matchCoordinator) {
+function registerGameHandlers(io, socket, matchCoordinator) {
 
     // Create Game
     socket.on("game:start", (data,callback) => {
@@ -20,11 +20,11 @@ function registerGameHandlers(io, socket, gameService, matchCoordinator) {
                 throw new Error("Player is not in a room");
             }
 
-            const gameStart = gameService.startGame(normalizedCode, playerId);
+            const gameStart = matchCoordinator.startGame(normalizedCode, playerId);
 
             io.to(normalizedCode).emit(
                 "game:started",
-                // gameStart
+                
                 matchCoordinator.getPublicMatchState(normalizedCode)
             );
 
@@ -61,7 +61,7 @@ function registerGameHandlers(io, socket, gameService, matchCoordinator) {
 
             const normalizedCode = roomCode.trim().toUpperCase();
 
-            const gameGuess = gameService.submitGuess(normalizedCode, playerId, data.number);
+            const gameGuess = matchCoordinator.submitGuess(normalizedCode, playerId, data.number);
 
             callback?.({
                 success: true,

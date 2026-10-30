@@ -9,7 +9,7 @@ class Game {
         this.roomCode = roomCode;
         this.state = "WAITING";
         this.roundNumber = 0;
-       
+
         this.winnerId = null;
         this.startTime_Round = null;
         this.endTime_Round = null;
@@ -21,6 +21,12 @@ class Game {
 
     getCode() {
         return this.gameCode;
+    }
+
+    addPlayer(playerId) {
+        if (!this.playerScores.has(playerId)) {
+            this.playerScores.set(playerId, 0);
+        }
     }
     startRound() {
         if (this.state === "IN_PROGRESS") throw new Error("Game is already running");
@@ -57,7 +63,7 @@ class Game {
 
     resetRound() {
         this.PlayerLastGuessed.clear();
-        
+
     }
 
     setState(state) {
@@ -66,6 +72,7 @@ class Game {
         if (!validStates.includes(state)) {
             throw new Error("Invalid game state");
         }
+
         this.state = state;
     }
 
@@ -92,53 +99,53 @@ class Game {
     /* Finish the round */
 
     finishRound(winnerId = null, reason = "TIMEOUT") {
-    // 1. Validate
-    if (this.state !== "IN_PROGRESS") {
-        throw new Error("Round is not active");
+        // 1. Validate
+        if (this.state !== "IN_PROGRESS") {
+            throw new Error("Round is not active");
+        }
+
+        const validReasons = ["CORRECT", "TIMEOUT", "FORFEIT"];
+
+        if (!validReasons.includes(reason)) {
+            throw new Error("Invalid round completion reason");
+        }
+
+        if (reason === "CORRECT" && !winnerId) {
+            throw new Error("Correct guess requires a winner");
+        }
+
+        if (reason === "FORFEIT" && !winnerId) {
+            throw new Error("Forfeit requires a remaining player");
+        }
+
+        if (reason === "TIMEOUT" && winnerId !== null) {
+            throw new Error("Timeout cannot have a winner");
+        }
+
+        // 2. Calculate score
+        let score = null;
+
+        if (reason === "CORRECT") {
+            score = (this.playerScores.get(winnerId) ?? 0) + 10;
+            this.playerScores.set(winnerId, score);
+        }
+
+        // 3. Update round state
+        this.winnerId = winnerId;
+        this.PlayerLastGuessed.clear();
+        this.startTime_Round = null;
+        this.endTime_Round = null;
+        this.state = "FINISHED";
+
+        // 4. Return round summary
+        return {
+            winnerId,
+            round: this.roundNumber,
+            answer: this.currentNumber,
+            result: reason,
+            score
+        };
     }
-
-    const validReasons = ["CORRECT", "TIMEOUT", "FORFEIT"];
-
-    if (!validReasons.includes(reason)) {
-        throw new Error("Invalid round completion reason");
-    }
-
-    if (reason === "CORRECT" && !winnerId) {
-        throw new Error("Correct guess requires a winner");
-    }
-
-    if (reason === "FORFEIT" && !winnerId) {
-        throw new Error("Forfeit requires a remaining player");
-    }
-
-    if (reason === "TIMEOUT" && winnerId !== null) {
-        throw new Error("Timeout cannot have a winner");
-    }
-
-    // 2. Calculate score
-    let score = null;
-
-    if (reason === "CORRECT") {
-        score = (this.playerScores.get(winnerId) ?? 0) + 10;
-        this.playerScores.set(winnerId, score);
-    }
-
-    // 3. Update round state
-    this.winnerId = winnerId;
-    this.PlayerLastGuessed.clear();
-    this.startTime_Round = null;
-    this.endTime_Round = null;
-    this.state = "FINISHED";
-
-    // 4. Return round summary
-    return {
-        winnerId,
-        round: this.roundNumber,
-        answer: this.currentNumber,
-        result: reason,
-        score
-    };
-}
 
     getState() {
         return this.state;

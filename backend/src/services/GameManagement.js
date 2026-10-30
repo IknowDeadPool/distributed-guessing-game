@@ -3,11 +3,11 @@ const Game = require("../models/game");
 require('dotenv').config();
 
 class GameManagement extends EventEmitter {
-    constructor(roomService) {
+    constructor() {
         super();
         this.Games = new Map();
 
-        this.roomManagement = roomService;
+       
         this.roundTimers = new Map();
         this.duration = process.env.ROUND_DURATION;
     }
@@ -24,21 +24,10 @@ class GameManagement extends EventEmitter {
         return this.Games.get(roomCode);
     }
 
-    startGame(roomCode, playerId) {
-        const room = this.roomManagement.getRoom(roomCode);
+    startGame(roomCode) {
+
         const game = this.getGame(roomCode);
 
-        if (!room.players.has(playerId)) {
-            throw new Error("Player does not belong to this room");
-        }
-
-        if (room.hostId !== playerId) {
-            throw new Error("Only the host can start the game");
-        }
-
-        if (room.players.size < 2) {
-            throw new Error("At least 2 players are required");
-        }
 
         game.startRound();
 
@@ -77,9 +66,6 @@ class GameManagement extends EventEmitter {
             throw new Error("Player ID should be valid");
         }
 
-        if (!this.roomManagement.isPlayerInRoom(roomCode, playerId)) {
-            throw new Error("Player is not in room");
-        }
 
         const game = this.Games.get(roomCode);
 
@@ -92,15 +78,12 @@ class GameManagement extends EventEmitter {
                 "CORRECT"
             );
 
-            return {
-                ...result,
-                roundSummary
-            };
         }
 
         return result;
     }
     finishRound(roomCode, winnerId = null, reason = "TIMEOUT") {
+      
         const game = this.Games.get(roomCode);
 
         if (!game) {
@@ -124,9 +107,9 @@ class GameManagement extends EventEmitter {
             roomCode,
             ...summary
         });
-
+        
         return summary;
-    } X
+    } 
 
     getGame(roomCode) {
         if (!this.validateCode(roomCode) || !this.Games.has(roomCode)) {
@@ -144,8 +127,9 @@ class GameManagement extends EventEmitter {
         if (timer) {
             clearTimeout(timer);
             this.roundTimers.delete(roomCode);
+            console.log("timers Stopped")
         }
-
+        console.log("Game Deleted");
         return this.Games.delete(roomCode);
     }
 
@@ -159,26 +143,26 @@ class GameManagement extends EventEmitter {
         return typeof code === "string" && code.trim().length > 0;
     }
 
-    handlePlayerLeft(roomCode, playerId) {
-        const room = this.roomManagement.getRoom(roomCode);
-        const game = this.Games.get(roomCode);
+    // handlePlayerLeft(roomCode, playerId) {
+    //     const room = this.roomManagement.getRoom(roomCode);
+    //     const game = this.Games.get(roomCode);
 
-        if (!game) return;
+    //     if (!game) return;
 
-        //game.playerScores.delete(playerId);
 
-        if (game.getState() !== "IN_PROGRESS") {
-            return;
-        }
 
-        if (room.players.size === 1) {
-            const remainingPlayerId = room.players.keys().next().value;
-            this.finishRound(roomCode, remainingPlayerId,
-                "FORFEIT"
-            );
-        }
+    //     if (game.getState() !== "IN_PROGRESS") {
+    //         return;
+    //     }
 
-    }
+    //     if (room.players.size === 1) {
+    //         const remainingPlayerId = room.players.keys().next().value;
+    //         this.finishRound(roomCode, remainingPlayerId,
+    //             "FORFEIT"
+    //         );
+    //     }
+
+    // }
 }
 
 module.exports = GameManagement;
