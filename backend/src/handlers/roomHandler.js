@@ -35,10 +35,12 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
             socket.data.playerId = player.getId();
 
             logger.info({
-                event: "room.created",
+                event: EVENTS.ROOM_CREATED,
+                gameEvent : EVENTS.GAME_CREATED,
                 roomCode: room.getCode(),
+                gameCode : game.getCode(),
                 playerId: player.getId()
-            }, "Room created successfully");
+            }, "Room and Game created successfully");
 
             console.log(player.name);
             callback?.({
@@ -51,10 +53,11 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
         }
         catch (error) {
             logger.warn({
-                event: "room.create.failed",
+                event: EVENTS.ROOM_CREATION_FAILED,
+                gameEvent: EVENTS.GAME_CREATION_FAILED,
                 socketId: socket.id,
                 err: error
-            }, "Room creation failed");
+            }, "Room / Game creation failed");
 
             callback?.({
                 success: false,
@@ -102,6 +105,12 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
                 //updatedRoom
             );
 
+            logger.info({
+                event: EVENTS.ROOM_JOINED,
+                roomCode: normalizedCode,
+                playerId: player.getId()
+            }, "Player Joined room successfully");
+
             callback?.({
                 success: true,
                 playerId: player.getId(),
@@ -147,6 +156,12 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
                 //updatedRoom.getRoomInfo()
                 matchCoordinator.getPublicMatchState(normalizedCode)
             );
+
+            logger.info({
+                event: EVENTS.ROOM_LEFT,
+                roomCode: normalizedCode,
+                playerId: playerId
+            }, "Player left room successfully");
 
             if (typeof callback === "function") {
 

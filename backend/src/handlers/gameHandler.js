@@ -1,9 +1,11 @@
-
+const logger = require("../logging/logger");
+const EVENTS = require("../logging/events");
+const Room = require("../models/room");
 
 function registerGameHandlers(io, socket, matchCoordinator) {
 
     // Create Game
-    socket.on("game:start", (data,callback) => {
+    socket.on("game:start", (data, callback) => {
         // Validate host through GameManagement
         // Start round
         // Broadcast game:started
@@ -24,24 +26,30 @@ function registerGameHandlers(io, socket, matchCoordinator) {
 
             io.to(normalizedCode).emit(
                 "game:started",
-                
+
                 matchCoordinator.getPublicMatchState(normalizedCode)
             );
 
             if (typeof callback === "function") {
-            callback({
-                success: true,
-                ...gameStart
-            });
-        }
+                callback({
+                    success: true,
+                    ...gameStart
+                });
+            }
+            logger.info({
+                event: EVENTS.GAME_STARTED,
+                gameCode: game.getCode(),
+                roomCode: roomCode.getCode()
+            }, "Game started successfully");
+
         }
         catch (error) {
             if (typeof callback === "function") {
-            callback({
-                success: false,
-                message: error.message
-            });
-        }
+                callback({
+                    success: false,
+                    message: error.message
+                });
+            }
         }
     });
 
