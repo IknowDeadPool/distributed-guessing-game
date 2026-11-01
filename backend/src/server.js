@@ -3,9 +3,11 @@ require("dotenv").config();
 const http = require("http");
 const { Server } = require("socket.io");
 const app = require("./app");
-
+const redisClient = require("./infrastructure/redisClient");
+const RoomOwnershipRegistry = require("./infrastructure/RoomOwnershipRegistry");
 const server = http.createServer(app);
-
+const SERVER_ID = process.env.SERVER_ID || "server-A";
+const ownershipRegistry = new RoomOwnershipRegistry(redisClient);
 const RoomManagement = require("./services/RoomManagement");
 const registerRoomHandlers = require("./handlers/roomHandler");
 const registerGameHandlers = require("./handlers/gameHandler");
@@ -14,7 +16,7 @@ const MatchCoordinator = require("./application/MatchCoordinator");
 
 const roomService = new RoomManagement();
 const gameService = new GameManagement();
-const matchCoordinator = new MatchCoordinator(roomService, gameService);
+const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID);
 
 const io = new Server(server, {
     cors: {
@@ -58,8 +60,30 @@ io.on("connection", (socket) => {
 //     });
 // });
 
-const PORT = process.env.PORT || 3001;
 
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+
+// const PORT = process.env.PORT || 3001;
+
+// server.listen(PORT, () => {
+//     console.log(`Server running on port ${PORT}`);
+// });
+
+
+async function startServer() {
+    try {
+        await redisClient.connect();
+
+        console.log("Connected to Redis");
+
+        const PORT = Number(process.env.PORT) || 3001;
+
+        server.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("Failed to start server:", error);
+        process.exitCode = 1;
+    }
+}
+
+startServer();

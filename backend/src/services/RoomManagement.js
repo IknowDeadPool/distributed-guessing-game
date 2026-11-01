@@ -6,30 +6,23 @@ class RoomManagement {
         this.playerRooms = new Map(); // playerId -> roomCode
     }
 
-    createRoom(roomSize) {
+    createRoom(roomCode = null,roomSize) {
         //if(hostId == null) throw new Error("Host id needs to be valid");
         if (roomSize < 2 || roomSize > 10) throw new Error("Players can only be betwee 2 and 10");
 
-        let room;
-        let roomCode;
-
-        do {
-            roomCode = crypto.randomBytes(3)
-                .toString("hex")
-                .toUpperCase();
-        } while (this.Rooms.has(roomCode));
-
-        try {
-            room = new Room(roomCode, roomSize);
-            //room.setHost(hostId);
-            this.Rooms.set(roomCode, room);
+        if (!roomCode) {
+            do {
+                roomCode = crypto.randomBytes(3)
+                    .toString("hex")
+                    .toUpperCase();
+            } while (this.Rooms.has(roomCode));
         }
-        catch (error) {
-            return {
-                status: "failed",
-                message: error
-            };
+
+        if (this.Rooms.has(roomCode)) {
+            throw new Error("Room code already exists locally");
         }
+        const room = new Room(roomCode, roomSize);
+        this.Rooms.set(roomCode, room);
         return room;
     }
 
@@ -49,13 +42,13 @@ class RoomManagement {
     joinRoom(roomCode, player) {
         if (roomCode === null || !this.Rooms.has(roomCode)) throw new Error("Room code should be valid");
 
-        if(this.playerRooms.has(player.getId())) throw new Error("Player already in another room");
+        if (this.playerRooms.has(player.getId())) throw new Error("Player already in another room");
 
         const room = this.Rooms.get(roomCode);
 
         room.addPlayer(player);
-        
-        
+
+
         this.playerRooms.set(player.getId(), roomCode);
 
         return room;
@@ -63,7 +56,7 @@ class RoomManagement {
 
     leaveRoom(roomCode, playerId) {
         if (roomCode === null || !this.Rooms.has(roomCode)) throw new Error("Room code should be valid");
-        
+
         console.log("leaveing room - RoomManagement");
         const room = this.Rooms.get(roomCode);
 
@@ -71,7 +64,7 @@ class RoomManagement {
 
         this.playerRooms.delete(playerId);
 
-        if(room.players.size === 0){
+        if (room.players.size === 0) {
             this.Rooms.delete(roomCode);
             return null;
         }
@@ -84,15 +77,15 @@ class RoomManagement {
         room.setHost(hostId);
     }
 
-    isPlayerInRoom(roomCode, playerId){
-        if(this.playerRooms.has(playerId) && this.playerRooms.get(playerId) === roomCode) return true;
+    isPlayerInRoom(roomCode, playerId) {
+        if (this.playerRooms.has(playerId) && this.playerRooms.get(playerId) === roomCode) return true;
         return false;
     }
 
-    getRoomInfo(roomCode){
+    getRoomInfo(roomCode) {
         return this.Rooms.get(roomCode).getRoomInfo();
     }
-    
+
 }
 
 module.exports = RoomManagement;

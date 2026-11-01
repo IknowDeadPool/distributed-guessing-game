@@ -10,7 +10,7 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
 
 
     // Create Room  
-    socket.on("room:create", (data, callback) => {
+    socket.on("room:create", async (data, callback) => {
 
         try {
             if (socket.data.roomCode) {
@@ -27,7 +27,7 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
 
             const player = new Player(crypto.randomUUID(), playerName);
 
-            const { room, game } = matchCoordinator.createRoom(roomSize, player)
+            const { room, game } = await matchCoordinator.createRoom(roomSize, player)
 
             socket.join(room.getCode());
 

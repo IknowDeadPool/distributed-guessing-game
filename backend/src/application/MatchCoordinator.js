@@ -1,26 +1,55 @@
+
+const crypto = require("crypto");
 class MatchCoordinator {
-    constructor(roomService, gameService) {
+    constructor(roomService, gameService, ownershipRegistry, serverId) {
         this.roomService = roomService;
         this.gameService = gameService;
+        this.ownershipRegistry = ownershipRegistry;
+        this.serverId = serverId;
     }
 
+    async createRoom(roomSize, player) {
+        if (roomSize < 2 || roomSize > 10) throw new Error("Players can only be between 2 and 10");
 
-    createRoom(roomSize, player){
-        const room = this.roomService.createRoom(roomSize);
-        const normalizedCode = room.getCode()
-                .trim()
+        let roomCode;
+        let reserved = false;
+
+        for (let attempt = 0; attempt < 5; attempt++) {
+            roomCode = crypto.randomBytes(3)
+                .toString("hex")
                 .toUpperCase();
-        const game = this.gameService.createGame(normalizedCode);
 
+            reserved = await this.ownershipRegistry.reserveRoom(
+                roomCode,
+                this.serverId
+            );
+            if (reserved) break;
+        }
+        const room = this.roomService.createRoom(roomCode, roomSize);
+        const normalizedCode = room.getCode()
+            .trim()
+            .toUpperCase();
 
-        console.log("Player ID :", player.getId());
+        try {
+            const game = this.gameService.createGame(normalizedCode);
+
+            console.log("Player ID :", player.getId());
             console.log("Room ID :", room.getCode());
             console.log("game Created for - ", room.getCode());
 
             this.roomService.joinRoom(room.getCode(), player);
             room.setHost(player.getId());
-            
-        return {room, game};
+            return { room, game };
+        }
+        catch (error) {
+            await this.ownershipRegistry.releaseRoom(
+                roomCode,
+                this.serverId
+            );
+            throw error;
+        }
+
+
     }
 
 
@@ -36,8 +65,8 @@ class MatchCoordinator {
 
     leaveRoom(roomCode, playerId) {
         // Coordinate room removal and game cleanup
-   
-        
+
+
 
         const updatedRoom = this.roomService.leaveRoom(roomCode, playerId);
 
@@ -50,10 +79,10 @@ class MatchCoordinator {
             };
         }
 
-        
+
         this.handlePlayerLeft(roomCode);
-        
-        
+
+
 
         return {
             roomDeleted: false,
@@ -84,7 +113,7 @@ class MatchCoordinator {
 
     }
 
-    startGame(roomCode, playerId){
+    startGame(roomCode, playerId) {
         const room = this.roomService.getRoom(roomCode);
 
         if (!room.players.has(playerId)) {
@@ -104,34 +133,34 @@ class MatchCoordinator {
 
 
     submitGuess(roomCode, playerId, number) {
-    if (!this.roomService.isPlayerInRoom(roomCode, playerId)) {
-        throw new Error("Player is not in room");
+        if (!this.roomService.isPlayerInRoom(roomCode, playerId)) {
+            throw new Error("Player is not in room");
+        }
+
+        return this.gameService.submitGuess(roomCode, playerId, number);
     }
 
-    return this.gameService.submitGuess(roomCode, playerId, number);
-}
 
-    
 
     handlePlayerLeft(roomCode) {
-    const room = this.roomService.getRoom(roomCode);
-    const game = this.gameService.getGame(roomCode);
+        const room = this.roomService.getRoom(roomCode);
+        const game = this.gameService.getGame(roomCode);
 
-    if (!room || !game) return;
+        if (!room || !game) return;
 
-    if (
-        game.getState() === "IN_PROGRESS" &&
-        room.players.size === 1
-    ) {
-        const remainingPlayerId = room.players.keys().next().value;
+        if (
+            game.getState() === "IN_PROGRESS" &&
+            room.players.size === 1
+        ) {
+            const remainingPlayerId = room.players.keys().next().value;
 
-        this.gameService.finishRound(
-            roomCode,
-            remainingPlayerId,
-            "FORFEIT"
-        );
+            this.gameService.finishRound(
+                roomCode,
+                remainingPlayerId,
+                "FORFEIT"
+            );
+        }
     }
-}
 
 }
 
