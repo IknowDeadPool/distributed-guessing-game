@@ -27,6 +27,9 @@ class RoomManagement {
     }
 
     getRoom(roomCode) {
+        console.log("Looking for room:", roomCode);
+    console.log("Rooms stored on this server:", [...this.Rooms.keys()]);
+    
         if (roomCode === null) {
             throw new Error("Room Code is required");
         }
@@ -40,17 +43,22 @@ class RoomManagement {
     }
 
     joinRoom(roomCode, player) {
+
+        console.log("join ROom - Room Management");
+
+        console.log("player Name : ", player.getName());
+        
         if (roomCode === null || !this.Rooms.has(roomCode)) throw new Error("Room code should be valid");
 
         if (this.playerRooms.has(player.getId())) throw new Error("Player already in another room");
 
-        const room = this.Rooms.get(roomCode);
+        const room = this.getRoom(roomCode);
 
         room.addPlayer(player);
 
 
         this.playerRooms.set(player.getId(), roomCode);
-
+        console.log("join Room Successful - Room Management");
         return room;
     }
 

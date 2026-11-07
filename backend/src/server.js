@@ -13,10 +13,20 @@ const registerRoomHandlers = require("./handlers/roomHandler");
 const registerGameHandlers = require("./handlers/gameHandler");
 const GameManagement = require("./services/GameManagement");
 const MatchCoordinator = require("./application/MatchCoordinator");
+const createInternalRoomRoutes = require("./routes/internalRoomRoutes");
+const RoomRequestForwarder = require("./infrastructure/RoomRequestForwarder");
 
 const roomService = new RoomManagement();
 const gameService = new GameManagement();
-const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID);
+const roomRequestForwarder = new RoomRequestForwarder();
+
+const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID, roomRequestForwarder);
+
+
+app.use(
+    "/internal",
+    createInternalRoomRoutes(matchCoordinator)
+);
 
 const io = new Server(server, {
     cors: {
@@ -34,8 +44,15 @@ io.on("connection", (socket) => {
     registerRoomHandlers(io, socket, matchCoordinator);
     registerGameHandlers(io, socket,matchCoordinator);
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
         console.log("Player disconnected:", socket.id);
+            const { roomCode, playerId } = socket.data;
+
+    if (!roomCode || !playerId) return;
+
+    // Remove player from the match
+    await matchCoordinator.leaveRoom(roomCode, playerId);
+
     });
 });
 

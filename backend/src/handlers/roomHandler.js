@@ -68,7 +68,8 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
 
     // join room
 
-    socket.on('room:join', (data, callback) => {
+    socket.on('room:join', async (data, callback) => {
+
         try {
             if (socket.data.roomCode) {
                 throw new Error("Player already in a room");
@@ -91,18 +92,20 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
             const player = new Player(crypto.randomUUID(), playerName);
 
 
-            const updatedRoom = matchCoordinator.joinRoom(normalizedCode, player);
+            const updatedRoom = await matchCoordinator.joinRoom(normalizedCode, player);
+            
 
             socket.join(normalizedCode);
 
             socket.data.roomCode = normalizedCode;
             socket.data.playerId = player.getId();
 
+            // console.log("Updated Room", updatedRoom);
             io.to(normalizedCode).emit(
                 "match:stateUpdated",
                 //updatedRoom.getRoomInfo()
-                matchCoordinator.getPublicMatchState(normalizedCode),
-                //updatedRoom
+                //matchCoordinator.getPublicMatchState(normalizedCode),
+                updatedRoom
             );
 
             logger.info({
@@ -143,7 +146,7 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
                 .toUpperCase();
 
 
-            matchCoordinator.leaveRoom(normalizedCode, playerId);
+            const updatedRoom = matchCoordinator.leaveRoom(normalizedCode, playerId);
 
 
             socket.leave(normalizedCode);
@@ -154,7 +157,8 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
             io.to(normalizedCode).emit(
                 "match:stateUpdated",
                 //updatedRoom.getRoomInfo()
-                matchCoordinator.getPublicMatchState(normalizedCode)
+                //matchCoordinator.getPublicMatchState(normalizedCode)
+                updatedRoom
             );
 
             logger.info({

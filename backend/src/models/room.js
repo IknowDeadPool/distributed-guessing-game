@@ -104,6 +104,10 @@ class Room {
         return this.hostId;
     }
 
+    getAllPlayersNames(){
+        return Array.from(this.players.values(), player => player.getName());
+    }
+
 }
 
 module.exports = Room;
