@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "cors": "^2.8.6",
     "crypto": "^1.0.1",
     "dotenv": "^18.0.8",
@@ -18,7 +19,7 @@
     "dev": "nodemon src/server.js",
     "test:game": "node tests/gameFlow.test.js",
     "test:room": "node tests/roomFlow.test.js",
-    "test:redis" : "node tests/redis.test.js"
+    "test:redis": "node tests/redis.test.js"
   },
   "keywords": [],
   "author": "",

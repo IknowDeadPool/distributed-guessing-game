@@ -1,12 +1,13 @@
 
 const crypto = require("crypto");
 class MatchCoordinator {
-    constructor(roomService, gameService, ownershipRegistry, serverId, roomRequestForwarder) {
+    constructor(roomService, gameService, ownershipRegistry, serverId, roomRequestForwarder,gameRequestForwarder) {
         this.roomService = roomService;
         this.gameService = gameService;
         this.ownershipRegistry = ownershipRegistry;
         this.serverId = serverId;
         this.roomRequestForwarder = roomRequestForwarder;
+        this.gameRequestForwarder = gameRequestForwarder;
     }
 
     async createRoom(roomSize, player) {
@@ -36,7 +37,7 @@ class MatchCoordinator {
             const game = this.gameService.createGame(normalizedCode);
 
             //this.roomService.joinRoom(room.getCode(), player);
-             await this.joinRoom(normalizedCode, player);
+            await this.joinRoom(normalizedCode, player);
             room.setHost(player.getId());
 
             console.log("Player ID :", player.getId());
@@ -51,8 +52,6 @@ class MatchCoordinator {
             );
             throw error;
         }
-
-
     }
 
     async joinRoom(roomCode, player) {
@@ -66,7 +65,7 @@ class MatchCoordinator {
 
         console.log("Owner returned by Redis:", ownerServerId);
 
-        if (!ownerServerId) {  
+        if (!ownerServerId) {
             throw new Error("Room does not exist");
         }
 
@@ -80,7 +79,6 @@ class MatchCoordinator {
             const game = this.gameService.getGame(roomCode);
 
 
-
             game.addPlayer(player.getId());
 
             // console.log(game.)
@@ -89,7 +87,6 @@ class MatchCoordinator {
             return this.getPublicMatchState(roomCode);
         }
 
-        //return await this.roomRequestForwarder.forwardJoin(ownerServerId, roomCode, player.getId(), player.getName()); 
 
         // make a PostCall to the another server to join the room
         const result = await this.roomRequestForwarder.forwardJoin(
@@ -102,31 +99,44 @@ class MatchCoordinator {
         return result.roomInfo;
     }
 
-    leaveRoom(roomCode, playerId) {
+    async leaveRoom(roomCode, playerId) {
         // Coordinate room removal and game cleanup
 
-        const updatedRoom = this.roomService.leaveRoom(roomCode, playerId);
+        const ownerServerId = await this.ownershipRegistry.getOwner(roomCode);
 
-        if (updatedRoom === null) {
-            this.gameService.removeGame(roomCode);
+        if (!ownerServerId) {
+            throw new Error("Room Does not Exist");
+        }
 
+        if (this.serverId === ownerServerId) {
+
+            const updatedRoom = this.roomService.leaveRoom(roomCode, playerId);
+
+            if (updatedRoom === null) {
+                this.gameService.removeGame(roomCode);
+
+                return {
+                    roomDeleted: true,
+                    roomCode
+                };
+            }
+
+
+            this.handlePlayerLeft(roomCode);
             return {
-                roomDeleted: true,
-                roomCode
-            };
+                roomDeleted: false,
+                roomCode,
+                roomInfo: this.getPublicMatchState(roomCode)
+            }
         }
 
-
-        this.handlePlayerLeft(roomCode);
-
-
-
-        return {
-            roomDeleted: false,
+        const result = await this.roomRequestForwarder.forwardLeave(
+            ownerServerId,
             roomCode,
-            roomInfo: this.getPublicMatchState(roomCode)
-        }
+            playerId,
+        );
 
+        return result;
     }
 
     getPublicMatchState(roomCode) {
@@ -146,7 +156,7 @@ class MatchCoordinator {
                 isHost: room.hostId === player.id
             }))
         }
-        console.log("Public MAtch state :",result );
+        console.log("Public Match state :", result);
 
         return {
             roomCode,
@@ -165,9 +175,18 @@ class MatchCoordinator {
 
     }
 
-    startGame(roomCode, playerId) {
-        const room = this.roomService.getRoom(roomCode);
+    async startGame(roomCode, playerId) {
 
+        const ownerServerId = await this.ownershipRegistry.getOwner(roomCode);
+
+        if (!ownerServerId) {
+            throw new Error("Room does not exist");
+        }
+
+        if(ownerServerId === this.serverId){
+            const room = this.roomService.getRoom(roomCode);
+            console.log("startGame-Match coordinator room code", room.getCode());
+        
         if (!room.players.has(playerId)) {
             throw new Error("Player does not belong to this room");
         }
@@ -177,19 +196,38 @@ class MatchCoordinator {
         }
 
         if (room.players.size < 2) {
-            throw new Error("At least 2 players are required");
+            throw new Error("Atleast 2 players are required");
         }
 
-        return this.gameService.startGame(roomCode, playerId)
+        const gameStart = this.gameService.startGame(roomCode, playerId);
+        console.log( "Match coordinator -  game Start:",gameStart);
+        return gameStart;
+        }
+        
+        const result = await this.gameRequestForwarder.forwardStart(ownerServerId, roomCode, playerId);
+        return result.gameInfo;
+        
     }
 
 
-    submitGuess(roomCode, playerId, number) {
-        if (!this.roomService.isPlayerInRoom(roomCode, playerId)) {
+   async submitGuess(roomCode, playerId, number) {
+         console.log("Entry - Match Coordinator submit Guess")
+
+        const ownerServerId = await this.ownershipRegistry.getOwner(roomCode);
+
+        
+
+        if(this.serverId === ownerServerId){
+            if (!this.roomService.isPlayerInRoom(roomCode, playerId)) {
             throw new Error("Player is not in room");
         }
+            return this.gameService.submitGuess(roomCode, playerId, number);
+        }
 
-        return this.gameService.submitGuess(roomCode, playerId, number);
+        const result = await this.gameRequestForwarder.forwardGuess(ownerServerId, roomCode, playerId,number);
+        console.log("Exit - Match Coordinator submit Guess")
+        return result;
+        
     }
 
 

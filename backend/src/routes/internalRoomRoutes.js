@@ -37,6 +37,38 @@ function createInternalRoomRoutes(matchCoordinator) {
         }
     });
 
+    router.post("/rooms/:roomCode/leave", async(req, res)=>{
+        try {
+
+            const { roomCode } = req.params;
+            const { playerId } = req.body;
+
+
+            if (!playerId ) {
+                return res.status(400).json({
+                    message: "playerId is required"
+                });
+            }
+
+            const normalizedCode = roomCode
+                .trim()
+                .toUpperCase();
+            
+
+            const result = await matchCoordinator.leaveRoom(normalizedCode, playerId);
+
+            return res.status(200).json({
+                message: "Player left room successfully",
+                ...result
+            });
+        } catch (error) {
+            return res.status(500).json({
+                message: "Error occurred while leaving the room",
+                error: error.message
+            });
+        }
+    })
+
     return router;
 }
 

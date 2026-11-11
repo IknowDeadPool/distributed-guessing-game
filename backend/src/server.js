@@ -4,6 +4,9 @@ const http = require("http");
 const { Server } = require("socket.io");
 const app = require("./app");
 const redisClient = require("./infrastructure/redisClient");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const { pubClient, subClient } = require("./infrastructure/redisAdapterClient");
+
 const RoomOwnershipRegistry = require("./infrastructure/RoomOwnershipRegistry");
 const server = http.createServer(app);
 const SERVER_ID = process.env.SERVER_ID || "server-A";
@@ -14,18 +17,34 @@ const registerGameHandlers = require("./handlers/gameHandler");
 const GameManagement = require("./services/GameManagement");
 const MatchCoordinator = require("./application/MatchCoordinator");
 const createInternalRoomRoutes = require("./routes/internalRoomRoutes");
-const RoomRequestForwarder = require("./infrastructure/RoomRequestForwarder");
+const createInternalGameRoutes = require("./routes/internalGameRoutes");
 
+const RoomRequestForwarder = require("./infrastructure/RoomRequestForwarder");
+const GameRequestForwarder = require("./infrastructure/GameRequestForwarder");
 const roomService = new RoomManagement();
 const gameService = new GameManagement();
 const roomRequestForwarder = new RoomRequestForwarder();
+const gameRequestForwarder = new GameRequestForwarder();
 
-const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID, roomRequestForwarder);
+const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID, roomRequestForwarder,gameRequestForwarder);
 
+
+// const internalRouter = express.Router();
+// internalRouter.use(createInternalRoomRoutes(matchCoordinator));
+// internalRouter.use(createInternalGameRoutes(matchCoordinator));
+
+//app.use("/internal", internalRouter);
 
 app.use(
     "/internal",
-    createInternalRoomRoutes(matchCoordinator)
+    createInternalRoomRoutes(matchCoordinator),
+
+);
+
+app.use(
+    "/internal",
+    createInternalGameRoutes(matchCoordinator),
+
 );
 
 const io = new Server(server, {
@@ -42,55 +61,35 @@ io.on("connection", (socket) => {
     console.log("Player connected:", socket.id);
 
     registerRoomHandlers(io, socket, matchCoordinator);
-    registerGameHandlers(io, socket,matchCoordinator);
+    registerGameHandlers(io, socket, matchCoordinator);
 
     socket.on("disconnect", async () => {
         console.log("Player disconnected:", socket.id);
-            const { roomCode, playerId } = socket.data;
+        const { roomCode, playerId } = socket.data;
 
-    if (!roomCode || !playerId) return;
+        if (!roomCode || !playerId) return;
 
-    // Remove player from the match
-    await matchCoordinator.leaveRoom(roomCode, playerId);
+        // Remove player from the match
+        await matchCoordinator.leaveRoom(roomCode, playerId);
 
     });
 });
 
 
 
-// io.on("connection", (socket) => {
-//     console.log("[1] Socket connected:", socket.id);
-
-//     socket.onAny((event, ...args) => {
-//         console.log("[EVENT RECEIVED]", event, args);
-//     });
-
-//     try {
-//         registerRoomHandlers(io, socket, matchCoordinator);
-//         console.log("[2] Room handlers registered");
-//     } catch (error) {
-//         console.error("[REGISTRATION ERROR]", error.stack);
-//     }
-
-//     socket.on("disconnect", (reason) => {
-//         console.log("[DISCONNECTED]", socket.id, reason);
-//     });
-// });
-
-
-
-// const PORT = process.env.PORT || 3001;
-
-// server.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`);
-// });
-
 
 async function startServer() {
     try {
-        await redisClient.connect();
+        //await redisClient.connect();
+
+        await Promise.all([
+            redisClient.connect(),
+            pubClient.connect(),
+            subClient.connect()
+        ]);
 
         console.log("Connected to Redis");
+        io.adapter(createAdapter(pubClient, subClient));
 
         const PORT = Number(process.env.PORT) || 3001;
 

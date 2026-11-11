@@ -25,6 +25,7 @@ class GameManagement extends EventEmitter {
     }
 
     startGame(roomCode) {
+        console.log("Enter - Game Management start game")
 
         const game = this.getGame(roomCode);
 
@@ -50,6 +51,8 @@ class GameManagement extends EventEmitter {
 
         this.roundTimers.set(roomCode, timer);
 
+        console.log("Exit - Game Management start game")
+
         return {
             roundNumber: game.roundNumber,
             endsAt: game.endTime_Round,
@@ -58,6 +61,9 @@ class GameManagement extends EventEmitter {
     }
 
     submitGuess(roomCode, playerId, number) {
+        
+       
+
         if (!this.validateCode(roomCode) || !this.Games.has(roomCode)) {
             throw new Error("Room code should be valid");
         }
@@ -80,6 +86,7 @@ class GameManagement extends EventEmitter {
 
         }
 
+        
         return result;
     }
     finishRound(roomCode, winnerId = null, reason = "TIMEOUT") {

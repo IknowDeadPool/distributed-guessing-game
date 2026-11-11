@@ -128,7 +128,7 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
         }
     })
     // Leave Room
-    socket.on("room:leave", (callback) => {
+    socket.on("room:leave", async (callback) => {
         try {
 
             const roomCode = socket.data.roomCode;
@@ -146,20 +146,20 @@ function registerRoomHandlers(io, socket, matchCoordinator) {
                 .toUpperCase();
 
 
-            const updatedRoom = matchCoordinator.leaveRoom(normalizedCode, playerId);
+            const updatedRoom = await matchCoordinator.leaveRoom(normalizedCode, playerId);
 
+            console.log("UpdatedRoom- Leave : ", updatedRoom);
 
+            io.to(normalizedCode).emit(
+                "match:stateUpdated",
+            
+                updatedRoom.roomInfo
+            );
+            
             socket.leave(normalizedCode);
 
             socket.data.roomCode = null;
             socket.data.playerId = null;
-
-            io.to(normalizedCode).emit(
-                "match:stateUpdated",
-                //updatedRoom.getRoomInfo()
-                //matchCoordinator.getPublicMatchState(normalizedCode)
-                updatedRoom
-            );
 
             logger.info({
                 event: EVENTS.ROOM_LEFT,
