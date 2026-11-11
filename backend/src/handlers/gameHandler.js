@@ -5,7 +5,7 @@ const Room = require("../models/room");
 function registerGameHandlers(io, socket, matchCoordinator) {
 
     // Create Game
-    socket.on("game:start", (data, callback) => {
+    socket.on("game:start", async (data, callback) => {
         // Validate host through GameManagement
         // Start round
         // Broadcast game:started
@@ -22,12 +22,13 @@ function registerGameHandlers(io, socket, matchCoordinator) {
                 throw new Error("Player is not in a room");
             }
 
-            const gameStart = matchCoordinator.startGame(normalizedCode, playerId);
+            const gameStart = await matchCoordinator.startGame(normalizedCode, playerId);
+            console.log("Game-Handler : ", gameStart);
 
             io.to(normalizedCode).emit(
                 "game:started",
-
-                matchCoordinator.getPublicMatchState(normalizedCode)
+                // matchCoordinator.getPublicMatchState(normalizedCode)
+                gameStart
             );
 
             if (typeof callback === "function") {
@@ -53,28 +54,37 @@ function registerGameHandlers(io, socket, matchCoordinator) {
         }
     });
 
-    socket.on("game:guess", (data, callback) => {
+    socket.on("game:guess", async (data, callback) => {
 
         try {
             const roomCode = socket.data.roomCode;
             const playerId = socket.data.playerId;
+            
+            console.log("Entry - Game Handler, Game Guess :");
+            console.log("RoomCode: ", roomCode);
+            console.log("playerId : ", playerId);
+            console.log("number : ", data.number);
+
             if (!data || typeof data !== "object") {
                 throw new Error("Invalid guess payload");
             }
 
-            if (!roomCode || !playerId) {
-                throw new Error("Player is not in a room");
-            }
+            // if (!roomCode || !playerId) {
+            //     throw new Error("Player is not in a room");
+            // }
 
 
             const normalizedCode = roomCode.trim().toUpperCase();
 
-            const gameGuess = matchCoordinator.submitGuess(normalizedCode, playerId, data.number);
+            const gameGuess = await matchCoordinator.submitGuess(normalizedCode, playerId, data.number);
+            console.log("game guess : ", gameGuess);
 
             callback?.({
                 success: true,
                 ...gameGuess,
             })
+
+            console.log("Exit - Game Handler, Game Guess :");
 
         }
         catch (error) {

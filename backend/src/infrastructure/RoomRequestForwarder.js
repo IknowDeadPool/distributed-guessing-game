@@ -38,6 +38,37 @@ class RoomRequestForwarder {
         console.log("Forward Join - Result: ", result.roomInfo.players[0].name);
         return result;
     }
+
+
+    async forwardLeave(ownerServerId, roomCode, playerId){
+         if (!roomCode || !playerId ) {
+            throw new Error("Invalid room code or  player ID");
+        }
+
+        const baseUrl = this.serverDirectory.getAddress(ownerServerId);
+
+        const url = `${baseUrl}/internal/rooms/${encodeURIComponent(roomCode)}/leave`;
+
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                playerId
+            })
+        });
+
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to forward leave request. HTTP status: ${response.status}`
+            );
+        }
+        const result = await response.json();
+
+        return result;
+    }
 }
 
 module.exports = RoomRequestForwarder;
