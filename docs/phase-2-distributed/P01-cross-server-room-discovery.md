@@ -44,6 +44,47 @@ Server B's `RoomManagement` cannot access the room stored in Server A's `Rooms` 
 
 Investigate shared state and room ownership approaches.
 
-## Status
+<!-- ## Status
 
-Problem reproduced and verified. Solution not yet implemented.
+Problem reproduced and verified. Solution not yet implemented. -->
+
+
+
+## Solution
+
+I introduced a shared room ownership registry using Redis.
+
+Instead of replicating the entire Room and Game state across all servers, each room is managed by the server that created it. Redis stores only the ownership information, allowing any server to discover which server is responsible for a room.
+
+### Room Ownership Registry
+
+The `RoomOwnershipRegistry` provides three operations:
+
+- `reserveRoom(roomCode, serverId)` — Reserves a room code for a server using Redis `SET NX EX`.
+- `getOwner(roomCode)` — Retrieves the server ID responsible for a room.
+- `releaseRoom(roomCode, serverId)` — Releases ownership only if the requesting server is the current owner. This is enforced using a Redis Lua script.
+
+### Redis Key Structure
+
+Each room's ownership is stored using the following key format:
+
+`room:<ROOMCODE>:owner`
+
+For example:
+
+- Key: `room:ABC123:owner`
+- Value: `server-A`
+
+Ownership reservations currently have a TTL of 300 seconds (5 minutes).
+
+### Architecture Decision
+
+I chose to keep Room and Game objects in the memory of their owning server rather than storing or replicating the complete objects in Redis.
+
+This keeps the existing single-server game logic intact while introducing a shared mechanism for discovering room ownership.
+
+### Result
+
+Any server can now query Redis to determine which server owns a particular room, even when that room does not exist in its local memory.
+
+This establishes the foundation for forwarding room-related requests between servers.

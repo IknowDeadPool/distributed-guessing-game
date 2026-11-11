@@ -33,6 +33,10 @@ class Player{
     getPlayerInfo(){
         return {id : this.id, name : this.name, status : this.connected, isWinner : this.isWinner}
     }
+
+    getName(){
+        return this.name;
+    }
     //set
 }
 
