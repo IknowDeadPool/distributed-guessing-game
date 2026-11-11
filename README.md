@@ -63,9 +63,12 @@ See the backend setup instructions for the exact environment variables and start
 
 Detailed technical documentation and the implementation journey:
 
-- [Phase 2 Overview and Problem Tracker](./docs/phase-2-distributed/README.md)
-- [Phase 2 Requirements](./docs/phase-2-distributed/00-requirements.md)
-- [Phase 2 Implementation Documentation](./docs/phase-2-distributed/)
+
+- [Phase 2 Overview and Problem Tracker](https://github.com/IknowDeadPool/distributed-guessing-game/blob/phase/2-distributed/docs/phase-2-distributed/README.md)
+
+- [Phase 2 Requirements](https://github.com/IknowDeadPool/distributed-guessing-game/blob/phase/2-distributed/docs/phase-2-distributed/00-requirements.md)
+
+- [Phase 2 Implementation Documentation](https://github.com/IknowDeadPool/distributed-guessing-game/tree/phase/2-distributed/docs/phase-2-distributed)
 
 ## Repository
 
