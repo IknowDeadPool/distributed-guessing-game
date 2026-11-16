@@ -6,11 +6,16 @@ const app = require("./app");
 const redisClient = require("./infrastructure/redisClient");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const { pubClient, subClient } = require("./infrastructure/redisAdapterClient");
-
+const ServerHeartbeatController = require("./infrastructure/ServerHeartbeatController");
+const ServerDirectory = require("./infrastructure/ServerDirectory");
 const RoomOwnershipRegistry = require("./infrastructure/RoomOwnershipRegistry");
 const server = http.createServer(app);
 const SERVER_ID = process.env.SERVER_ID || "server-A";
+const serverDirectory = new ServerDirectory();
+
 const ownershipRegistry = new RoomOwnershipRegistry(redisClient);
+
+
 const RoomManagement = require("./services/RoomManagement");
 const registerRoomHandlers = require("./handlers/roomHandler");
 const registerGameHandlers = require("./handlers/gameHandler");
@@ -26,7 +31,7 @@ const gameService = new GameManagement();
 const roomRequestForwarder = new RoomRequestForwarder();
 const gameRequestForwarder = new GameRequestForwarder();
 
-const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID, roomRequestForwarder,gameRequestForwarder);
+const matchCoordinator = new MatchCoordinator(roomService, gameService, ownershipRegistry, SERVER_ID, roomRequestForwarder, gameRequestForwarder);
 
 
 // const internalRouter = express.Router();
@@ -89,6 +94,9 @@ async function startServer() {
         ]);
 
         console.log("Connected to Redis");
+
+        monitorServers();
+
         io.adapter(createAdapter(pubClient, subClient));
 
         const PORT = Number(process.env.PORT) || 3001;
@@ -101,5 +109,63 @@ async function startServer() {
         process.exitCode = 1;
     }
 }
+
+async function monitorServers() {
+    const heartbeatController = new ServerHeartbeatController(redisClient);
+
+    await heartbeatController.setServerState(SERVER_ID);
+
+
+    // send alive state to redis every 2s.
+    try {
+        setInterval(async () => {
+            await heartbeatController.setServerState(SERVER_ID);
+        }, 2000);
+    }
+
+    catch (error) {
+        console.error("Failed to publish heartbeat:", error.message);
+    }
+
+
+    // Keep track of who is currently alive so we don't spam logs
+    const serverHealthState = new Map();
+
+    try {
+        setInterval(async () => {
+            const allServers = serverDirectory.getAllServerIds();
+
+            for (const otherServerId of allServers) {  // NOTE: For >100 servers, replace this loop with Redis MGET batching.
+                // Don't check ourselves
+                if (otherServerId === SERVER_ID) continue;
+
+                const isAlive = await heartbeatController.isServerAlive(otherServerId);
+                const wasAlive = serverHealthState.get(otherServerId) ?? true; // assume alive initially
+
+                if (!isAlive && wasAlive) {
+                    console.warn(`ALERT: Server ${otherServerId} is DEAD!`);
+                    serverHealthState.set(otherServerId, false);
+                } else if (isAlive && !wasAlive) {
+                    console.log(`Server ${otherServerId} is BACK ONLINE.`);
+                    serverHealthState.set(otherServerId, true);
+                }
+            }
+        }, 3000);
+    }
+    catch (error) {
+        console.error("Server health check failed:", error.message);
+    }
+}
+
+process.on("SIGINT", async () => {   // When pressed ctrl + c
+    console.log(`\nShutting down ${SERVER_ID}, removing heartbeat...`);
+    await redisClient.del(`server:${SERVER_ID}:alive`);
+    server.close(() => {
+        process.exit(0);
+    });
+});
+
+
+
 
 startServer();

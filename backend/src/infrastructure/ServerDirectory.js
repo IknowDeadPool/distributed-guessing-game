@@ -14,6 +14,10 @@ class ServerDirectory {
         }
         return this.servers.get(serverId);
     }
+
+    getAllServerIds(){
+        return Array.from(this.servers.keys());
+    }
 }
 
 module.exports = ServerDirectory;
